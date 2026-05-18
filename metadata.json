@@ -1,0 +1,8 @@
+{
+  "name": "Q-Kitty's Quantum Computing Learning Hub",
+  "description": "A comprehensive K-12 quantum education framework featuring AI-powered labs, interactive simulations, and a data-driven teacher dashboard for classroom tracking.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": []
+}
