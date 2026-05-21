@@ -45,8 +45,9 @@ export default function UpperPrimaryChatbot({ onAwardPoints, onAwardBadge, onSet
     
     window.speechSynthesis.cancel();
     
-    // Clean up emojis for speech
-    const cleanText = text.replace(/[\u{1F600}-\u{1F64F}]/gu, '')
+    // Clean up emojis and asterisks for speech
+    const cleanText = text.replace(/\*/g, '')
+                          .replace(/[\u{1F600}-\u{1F64F}]/gu, '')
                           .replace(/[\u{1F300}-\u{1F5FF}]/gu, '')
                           .replace(/[\u{1F680}-\u{1F6FF}]/gu, '')
                           .replace(/[\u{1F700}-\u{1F77F}]/gu, '')
@@ -80,7 +81,7 @@ export default function UpperPrimaryChatbot({ onAwardPoints, onAwardBadge, onSet
 
     try {
       const historyToPass = messages.map(m => ({ role: m.role, text: m.text }));
-      const response = await sendMessageToUpperPrimaryAgent(
+      let response = await sendMessageToUpperPrimaryAgent(
         text, 
         historyToPass, 
         systemInstruction,
@@ -91,6 +92,7 @@ export default function UpperPrimaryChatbot({ onAwardPoints, onAwardBadge, onSet
         onSetFreeMode
       );
       
+      response = response.replace(/\*/g, '');
       const newModelMsg: Message = { id: (Date.now() + 1).toString(), role: 'model', text: response };
       setMessages(prev => [...prev, newModelMsg]);
       speak(response);

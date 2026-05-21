@@ -120,8 +120,9 @@ export default function EarlyPrimaryChatbot({ onAwardPoints, onAwardBadge, onSet
     // Cancel any ongoing speech
     window.speechSynthesis.cancel();
     
-    // Create new utterance and clean up emojis since they might sound weird
-    const textToSpeak = text.replace(/[\u{1F600}-\u{1F64F}]/gu, '')
+    // Create new utterance and clean up emojis and asterisks since they might sound weird
+    const textToSpeak = text.replace(/\*/g, '')
+                            .replace(/[\u{1F600}-\u{1F64F}]/gu, '')
                             .replace(/[\u{1F300}-\u{1F5FF}]/gu, '')
                             .replace(/[\u{1F680}-\u{1F6FF}]/gu, '')
                             .replace(/[\u{1F700}-\u{1F77F}]/gu, '')
@@ -190,8 +191,9 @@ export default function EarlyPrimaryChatbot({ onAwardPoints, onAwardBadge, onSet
         () => onCompleteTopic(),
         () => onSetFreeMode()
       );
-      setMessages(prev => [...prev, { role: 'model', text: responseText || 'Meow... something went wrong!' }]);
-      speak(responseText || 'Meow... something went wrong!');
+      const cleanedResponseText = (responseText || 'Meow... something went wrong!').replace(/\*/g, '');
+      setMessages(prev => [...prev, { role: 'model', text: cleanedResponseText }]);
+      speak(cleanedResponseText);
     } catch (error) {
       console.error(error);
       const errorMsg = 'Oops! My magical circuits got tangled. Can you ask again?';

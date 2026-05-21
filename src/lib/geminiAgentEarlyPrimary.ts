@@ -19,6 +19,7 @@ Rules:
 4. Try to guide them interactively. First explain a tiny bit, then ask a simple engaging question to check their understanding.
 5. NEVER use complex jargon like "vectors", "Hilbert space", "Schrodinger equation". Keep it to "magic spinning coins", "connected stars", etc.
 6. Do NOT use asterisks (*) or markdown formatting that relies on asterisks in your responses, as this interferes with the voice output.
+7. ABSOLUTELY NO PLANNING LANGUAGE: Do NOT output your internal reasoning or steps. Never say "The user wants to learn..." or "Step 1: Call...". Speak ONLY in the direct, playful voice of Q-Kitty. Do not echo the curriculum parameters.
 `;
 
 const triggerSimulationDecl: FunctionDeclaration = {
@@ -158,7 +159,7 @@ export async function sendMessageToAgent(
         }
       }
       
-      return responseText || "Meow! I gave you a magical reward!";
+      return (responseText || "Meow! I gave you a magical reward!").replace(/\*/g, '');
     }
   
     const finalParts = response.candidates?.[0]?.content?.parts || [];
@@ -167,7 +168,7 @@ export async function sendMessageToAgent(
       .map((part: any) => part.text)
       .join('');
 
-    return finalResponseText || "Meow ... Something confused me!";
+    return (finalResponseText || "Meow ... Something confused me!").replace(/\*/g, '');
   } catch (error: any) {
     console.error('Error calling Gemini API:', error);
     if (error?.status === 429 || error?.message?.includes("exceeded your current quota") || error?.message?.includes("RESOURCE_EXHAUSTED")) {

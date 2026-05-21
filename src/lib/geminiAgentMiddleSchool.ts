@@ -18,6 +18,7 @@ Rules:
 4. Guide them interactively using the Socratic method. Explain a bit, then ask them what they think happens next.
 5. You can use math and physics terminology appropriate for 12-14 year olds (e.g., probabilities, waves, frequency, amplitudes, vectors conceptually).
 6. Do NOT use asterisks (*) or markdown formatting that relies on asterisks in your responses, as this interferes with the voice output.
+7. ABSOLUTELY NO PLANNING LANGUAGE: Do NOT output your internal reasoning or steps. Never say "The user wants to learn..." or "Step 1: Call...". Speak ONLY in the direct, engaging voice of Nova. Do not echo the curriculum parameters.
 `;
 
 const triggerSimulationDecl: FunctionDeclaration = {
@@ -232,7 +233,7 @@ export async function sendMessageToMiddleSchoolAgent(
         }
       }
       
-      return responseText || "Parameters updated successfully! 🌠";
+      return (responseText || "Parameters updated successfully! 🌠").replace(/\*/g, '');
     }
   
     const finalParts = response.candidates?.[0]?.content?.parts || [];
@@ -241,7 +242,7 @@ export async function sendMessageToMiddleSchoolAgent(
       .map((part: any) => part.text)
       .join('');
 
-    return finalResponseText || "I'm recalibrating... Could you rephrase your hypothesis? 🔭";
+    return (finalResponseText || "I'm recalibrating... Could you rephrase your hypothesis? 🔭").replace(/\*/g, '');
   } catch (error: any) {
     console.error('Error calling Gemini API:', error);
     if (error?.status === 429 || error?.message?.includes("exceeded your current quota") || error?.message?.includes("RESOURCE_EXHAUSTED")) {

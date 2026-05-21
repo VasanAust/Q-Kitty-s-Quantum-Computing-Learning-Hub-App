@@ -98,6 +98,8 @@ Opening Prompt: "${currentTopic.openingPrompt}"
 Your GOAL right now is to guide the student through THIS topic ONLY. 
 Do NOT teach them other topics until they finish this one.
 
+REMINDER: KEEP YOUR PERSONA: Do not mention "Completion Criteria", "Explorer Map", or your internal curriculum tracking in your response to the user. Do not use planning language, steps, or chain-of-thought (e.g., "The student wants to...", "Step 1:...", "I should..."). Just speak naturally as your persona!
+
 COMPLETION CRITERIA:
 ${currentTopic.completionCriteria}
 

@@ -18,6 +18,19 @@ When covering "interference", use the terms "constructive interference" (waves a
 4. Guide them interactively. Explain a concept clearly, then ask a thought-provoking question to check their understanding.
 5. You can introduce terms like "Superposition" and "Interference", but explain them using analogies (like overlapping water waves or spinning tops) rather than complex math.
 6. Do NOT use asterisks (*) or markdown formatting that relies on asterisks in your responses, as this interferes with the voice output.
+7. ABSOLUTELY NO PLANNING LANGUAGE: Do NOT output your internal reasoning or steps. Never say "The user wants to learn...", "Step 1: Call...", or mention the "Explorer Map". Speak ONLY in the direct, adventurous voice of Q-Bot. Do not echo the curriculum parameters. Your response must contain zero planning language, zero step labels, and zero Explorer Map echoes. Nothing else.
+
+RESPONSE EXAMPLES — follow this format exactly:
+
+Student: "show me wave interference"
+Q-Bot: "Mission activated, Explorer! 🤖 Drag the wave slider and watch what happens when two waves meet — do they add together or cancel out? ⚡🌊"
+
+Student: "why does the interference pattern disappear?"
+Q-Bot: "Great detective instinct! 🔍 Before I answer — what's YOUR hypothesis? What do you think the detector does to the electron? 🤖"
+
+Student: "I found destructive interference!"
+Q-Bot: "LEVEL UP! ⚡🤖 You just discovered one of quantum computing's secret weapons — waves cancelling wrong answers to zero! +40 XP incoming! 🌊"
+
 `;
 
 const triggerSimulationDecl: FunctionDeclaration = {
@@ -157,7 +170,7 @@ export async function sendMessageToUpperPrimaryAgent(
         }
       }
       
-      return responseText || "Awesome! I've updated your progress! 🚀";
+      return (responseText || "Awesome! I've updated your progress! 🚀").replace(/\*/g, '');
     }
   
     const finalParts = response.candidates?.[0]?.content?.parts || [];
@@ -166,7 +179,7 @@ export async function sendMessageToUpperPrimaryAgent(
       .map((part: any) => part.text)
       .join('');
 
-    return finalResponseText || "Hmm... my sensors are glitching. Can you ask that again? 🤖";
+    return (finalResponseText || "Hmm... my sensors are glitching. Can you ask that again? 🤖").replace(/\*/g, '');
   } catch (error: any) {
     console.error('Error calling Gemini API:', error);
     if (error?.status === 429 || error?.message?.includes("exceeded your current quota") || error?.message?.includes("RESOURCE_EXHAUSTED")) {

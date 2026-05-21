@@ -66,7 +66,8 @@ export default function MiddleSchoolChatbot({
     
     window.speechSynthesis.cancel();
     
-    const cleanText = text.replace(/[\u{1F600}-\u{1F64F}]/gu, '')
+    const cleanText = text.replace(/\*/g, '')
+                          .replace(/[\u{1F600}-\u{1F64F}]/gu, '')
                           .replace(/[\u{1F300}-\u{1F5FF}]/gu, '')
                           .replace(/[\u{1F680}-\u{1F6FF}]/gu, '')
                           .replace(/[\u{1F700}-\u{1F77F}]/gu, '')
@@ -104,7 +105,7 @@ export default function MiddleSchoolChatbot({
           `COLLABORATION MODE: You are teaching ${Object.values(participants).map(p => p.name).join(' and ')} simultaneously. Address them both. Occasionally ask them to discuss with each other: '[Name A], what do you think? [Name B], do you agree?' before you give the answer. Encourage peer explanation. ` :
           "";
 
-      const response = await sendMessageToMiddleSchoolAgent(
+      let response = await sendMessageToMiddleSchoolAgent(
         text, 
         historyToPass, 
         collabPrefix + systemInstruction,
@@ -119,6 +120,7 @@ export default function MiddleSchoolChatbot({
         onGenerateJournal
       );
       
+      response = response.replace(/\*/g, '');
       const newModelMsg: Message = { id: (Date.now() + 1).toString(), role: 'model', text: response };
       setMessages(prev => [...prev, newModelMsg]);
       speak(response);
