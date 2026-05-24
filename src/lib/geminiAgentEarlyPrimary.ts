@@ -159,7 +159,8 @@ export async function sendMessageToAgent(
         }
       }
       
-      return (responseText || "Meow! I gave you a magical reward!").replace(/\*/g, '');
+      const cleaned = stripPlanningLanguage(responseText || "Meow! I gave you a magical reward!");
+      return cleaned.replace(/\*/g, '');
     }
   
     const finalParts = response.candidates?.[0]?.content?.parts || [];
@@ -168,7 +169,8 @@ export async function sendMessageToAgent(
       .map((part: any) => part.text)
       .join('');
 
-    return (finalResponseText || "Meow ... Something confused me!").replace(/\*/g, '');
+    const cleanedFinal = stripPlanningLanguage(finalResponseText || "Meow ... Something confused me!");
+    return cleanedFinal.replace(/\*/g, '');
   } catch (error: any) {
     console.error('Error calling Gemini API:', error);
     if (error?.status === 429 || error?.message?.includes("exceeded your current quota") || error?.message?.includes("RESOURCE_EXHAUSTED")) {
@@ -176,4 +178,57 @@ export async function sendMessageToAgent(
     }
     return "Meow ... Something confused me! Can you ask again?";
   }
+}
+
+export function stripPlanningLanguage(text: string): string {
+  if (!text) return text;
+  
+  const markers = [
+    /write\s*:\s*(.*)/is,
+    /speak\s*:\s*(.*)/is,
+    /q-kitty\s*:\s*(.*)/is,
+    /nova\s*:\s*(.*)/is,
+    /q-bot\s*:\s*(.*)/is
+  ];
+  
+  for (const regex of markers) {
+    const match = text.match(regex);
+    if (match) {
+      const parts = text.split(new RegExp(regex.source.split('\\s*:\\s*')[0] + '\\s*:\\s*', 'i'));
+      if (parts.length > 1) {
+        let lastPart = parts[parts.length - 1].trim();
+        if (lastPart.startsWith('"') && lastPart.endsWith('"')) {
+          lastPart = lastPart.slice(1, -1).trim();
+        }
+        return lastPart;
+      }
+    }
+  }
+
+  const lines = text.split('\n');
+  const filteredLines = lines.filter(line => {
+    const lower = line.toLowerCase().trim();
+    if (lower.startsWith('the user wants to') || lower.startsWith('the student wants to')) return false;
+    if (lower.startsWith('the current curriculum') || lower.startsWith('the current topic')) return false;
+    if (lower.startsWith('your goal right now') || lower.startsWith('guide the student')) return false;
+    if (lower.startsWith('i should use') || lower.startsWith('i should trigger')) return false;
+    if (lower.startsWith('step ') && (lower.includes('call') || lower.includes('trigger') || lower.includes('write') || lower.includes('speak'))) return false;
+    if (lower.startsWith('prerequisite') || lower.includes('is not yet in masteredconcepts')) return false;
+    if (lower.startsWith('completion criteria:')) return false;
+    return true;
+  });
+
+  let filteredText = filteredLines.join('\n').trim();
+  
+  const stepRegex = /Step\s*\d+\s*:\s*.*?(?:Step\s*\d+\s*:\s*|Write\s*:\s*|Speak\s*:\s*)(.*)/is;
+  const stepMatch = filteredText.match(stepRegex);
+  if (stepMatch) {
+    filteredText = stepMatch[1].trim();
+  }
+
+  if (filteredText.startsWith('"') && filteredText.endsWith('"')) {
+    filteredText = filteredText.slice(1, -1).trim();
+  }
+
+  return filteredText || text;
 }

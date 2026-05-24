@@ -21,16 +21,11 @@ import {
   Menu,
   X
 } from 'lucide-react';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip as RechartsTooltip, 
-  ResponsiveContainer,
-  Cell
-} from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
+import { earlyPrimaryCurriculum } from '../curriculum/earlyPrimaryCurriculum';
+import { upperPrimaryCurriculum } from '../curriculum/upperPrimaryCurriculum';
+import { middleSchoolCurriculum } from '../curriculum/middleSchoolCurriculum';
+import { upperSecondaryCurriculum } from '../curriculum/upperSecondaryCurriculum';
 
 interface Classroom {
   id: string;
@@ -60,6 +55,29 @@ export default function TeacherDashboard() {
   const [isCreating, setIsCreating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'classrooms' | 'analytics' | 'curriculum'>('classrooms');
+  const [selectedCurriculumLevel, setSelectedCurriculumLevel] = useState<'early_primary' | 'upper_primary' | 'middle_school' | 'upper_secondary' | null>(null);
+
+  const [earlyPrimTopics, setEarlyPrimTopics] = useState(earlyPrimaryCurriculum);
+  const [upperPrimTopics, setUpperPrimTopics] = useState(upperPrimaryCurriculum);
+  const [midSchoolTopics, setMidSchoolTopics] = useState(middleSchoolCurriculum);
+  const [upperSecTopics, setUpperSecTopics] = useState(upperSecondaryCurriculum);
+
+  const [isAddingTopic, setIsAddingTopic] = useState(false);
+  const [newTopicTitle, setNewTopicTitle] = useState('');
+  const [newTopicSim, setNewTopicSim] = useState('qubit');
+  const [newTopicPrompt, setNewTopicPrompt] = useState('');
+  const [newTopicCriteria, setNewTopicCriteria] = useState('');
+
+  const [socraticSettings, setSocraticSettings] = useState<Record<string, { socraticIndex: number; responseLimit: number; activePreset: string }>>({
+    early_primary: { socraticIndex: 30, responseLimit: 40, activePreset: 'Super friendly kitty style' },
+    upper_primary: { socraticIndex: 50, responseLimit: 60, activePreset: 'Explorational companion bot style' },
+    middle_school: { socraticIndex: 75, responseLimit: 80, activePreset: 'Pure Socratic detective guide' },
+    upper_secondary: { socraticIndex: 90, responseLimit: 120, activePreset: 'Analytical Oracle physicist' }
+  });
+
+  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -205,6 +223,57 @@ export default function TeacherDashboard() {
     return module.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
   };
 
+  const getSelectedLevelData = () => {
+    switch (selectedCurriculumLevel) {
+      case 'early_primary':
+        return {
+          id: 'early_primary' as const,
+          title: 'Early Primary (Ages 5-8)',
+          color: 'from-orange-600 to-amber-500',
+          textColor: 'text-orange-400',
+          borderColor: 'border-orange-500/30',
+          topics: earlyPrimTopics,
+          setTopics: setEarlyPrimTopics,
+          description: 'Basic introductions to logic, simple puzzles, and introductory conceptual frameworks using the Q-Kitty interface.'
+        };
+      case 'upper_primary':
+        return {
+          id: 'upper_primary' as const,
+          title: 'Upper Primary (Ages 8-10)',
+          color: 'from-emerald-600 to-teal-500',
+          textColor: 'text-emerald-400',
+          borderColor: 'border-emerald-500/30',
+          topics: upperPrimTopics,
+          setTopics: setUpperPrimTopics,
+          description: 'Exploration of basic physics concepts, wave interference, and superposition through interactive missions.'
+        };
+      case 'middle_school':
+        return {
+          id: 'middle_school' as const,
+          title: 'Middle School (Ages 11-13)',
+          color: 'from-teal-600 to-cyan-500',
+          textColor: 'text-teal-400',
+          borderColor: 'border-teal-500/30',
+          topics: midSchoolTopics,
+          setTopics: setMidSchoolTopics,
+          description: 'Interactive experiments with photon entanglement, logic gates, and the double-slit experiment via Q-Bot.'
+        };
+      case 'upper_secondary':
+        return {
+          id: 'upper_secondary' as const,
+          title: 'Upper Secondary (Ages 14-17)',
+          color: 'from-purple-600 to-indigo-500',
+          textColor: 'text-purple-400',
+          borderColor: 'border-purple-500/30',
+          topics: upperSecTopics,
+          setTopics: setUpperSecTopics,
+          description: 'Advanced quantum computing paradigms, Python programming, and theoretical modeling with Oracle.'
+        };
+      default:
+        return null;
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
@@ -233,22 +302,31 @@ export default function TeacherDashboard() {
         </div>
 
         <nav className="flex-1 space-y-2">
-          <button className="w-full flex items-center gap-4 px-4 py-3 rounded-2xl bg-purple-600 text-white font-bold transition-all shadow-lg shadow-purple-500/20">
+          <button 
+            onClick={() => { setActiveTab('classrooms'); setSelectedCurriculumLevel(null); setIsMobileMenuOpen(false); }}
+            className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl font-bold transition-all ${activeTab === 'classrooms' && !selectedCurriculumLevel ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
             <Users size={20} />
             <span className={`transition-opacity ${isMobileMenuOpen ? 'opacity-100 block' : 'opacity-0 hidden md:opacity-100 md:block'}`}>Classrooms</span>
           </button>
-          <button className="w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
+          <button 
+            onClick={() => { setActiveTab('analytics'); setSelectedCurriculumLevel(null); setIsMobileMenuOpen(false); }}
+            className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl font-bold transition-all ${activeTab === 'analytics' ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
             <BarChart2 size={20} />
             <span className={`transition-opacity ${isMobileMenuOpen ? 'opacity-100 block' : 'opacity-0 hidden md:opacity-100 md:block'}`}>Analytics</span>
           </button>
-          <button className="w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
+          <button 
+            onClick={() => { setActiveTab('curriculum'); setSelectedCurriculumLevel(null); setIsMobileMenuOpen(false); }}
+            className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl font-bold transition-all ${activeTab === 'curriculum' ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
             <Box size={20} />
             <span className={`transition-opacity ${isMobileMenuOpen ? 'opacity-100 block' : 'opacity-0 hidden md:opacity-100 md:block'}`}>Curriculum</span>
           </button>
         </nav>
 
         <div className="mt-auto space-y-2">
-          <button className="w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
+          <button 
+            onClick={() => setIsAccountModalOpen(true)}
+            className="w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-slate-400 hover:text-white hover:bg-slate-800 transition-all pointer-events-auto"
+          >
             <Settings size={20} />
             <span className={`transition-opacity ${isMobileMenuOpen ? 'opacity-100 block' : 'opacity-0 hidden md:opacity-100 md:block'}`}>Account</span>
           </button>
@@ -261,6 +339,114 @@ export default function TeacherDashboard() {
           </button>
         </div>
       </aside>
+
+      {/* Account Details Modal */}
+      <AnimatePresence>
+        {isAccountModalOpen && (
+          <div className="fixed inset-0 flex items-center justify-center z-[110] p-4 sm:p-6">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsAccountModalOpen(false)}
+              className="fixed inset-0 bg-[#020617]/80 backdrop-blur-md"
+            />
+
+            {/* Modal Box */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: "spring", duration: 0.5, bounce: 0.1 }}
+              className="relative w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-[2.5rem] shadow-2xl p-6 sm:p-8 overflow-hidden z-[120]"
+            >
+              <div className="absolute top-0 right-0 p-6">
+                <button
+                  onClick={() => setIsAccountModalOpen(false)}
+                  className="p-2.5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-all cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Decorative accent glow */}
+              <div className="absolute top-0 left-12 w-48 h-48 bg-gradient-to-br from-purple-500/10 to-blue-500/10 rounded-full blur-3xl -z-10 pointer-events-none" />
+
+              <div className="flex items-center gap-4 mb-8">
+                <div className="w-14 h-14 bg-gradient-to-tr from-purple-600 to-indigo-600 rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-purple-500/20">
+                  <ShieldCheck className="text-white w-8 h-8" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-black tracking-widest text-purple-400 uppercase">Authenticated Session</span>
+                  <h3 className="text-2xl font-black text-white tracking-tight">Faculty Credentials</h3>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                {/* Visual ID Card */}
+                <div className="p-6 bg-slate-950 border border-slate-800 rounded-2xl space-y-4">
+                  <div className="flex justify-between items-start border-b border-slate-800 pb-4 flex-wrap gap-4">
+                    <div>
+                      <span className="text-[9px] font-mono text-slate-500 block uppercase tracking-widest">Instructor Administrator</span>
+                      <span className="text-white font-black text-lg">{session?.user?.user_metadata?.full_name || 'Demo Instructor'}</span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] font-mono text-slate-500 block text-right uppercase tracking-widest">Active Workspace ID</span>
+                      <span className="text-slate-400 font-bold text-sm bg-slate-900 border border-slate-800 px-3 py-1 rounded-xl font-mono">FACULTY-109b58</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <span className="text-[9px] font-mono text-slate-500 block uppercase tracking-widest">Liaison Email</span>
+                      <span className="text-purple-300 font-bold font-mono">{session?.user?.email || 'VasanAust@gmail.com'}</span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] font-mono text-slate-500 block uppercase tracking-widest">Security Clearance</span>
+                      <span className="text-emerald-400 font-bold flex items-center gap-1.5 mt-0.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Verified Faculty Admin
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] font-mono text-slate-500 block uppercase tracking-widest">Connected Classrooms</span>
+                      <span className="text-slate-300 font-bold">{classrooms.length} Active Tracks</span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] font-mono text-slate-500 block uppercase tracking-widest">Assigned Students</span>
+                      <span className="text-slate-300 font-bold">{students.length} Learners Enrolled</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Additional Metadata Info */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-black text-slate-400 uppercase tracking-wider">System & Privacy Sovereignty</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="p-4 bg-slate-950/40 border border-slate-800 rounded-2xl">
+                      <span className="text-[9px] font-mono text-slate-500 block uppercase tracking-widest mb-1">Local Sovereignty</span>
+                      <p className="text-[11px] text-slate-400 leading-relaxed">Assigned modules run locally to parse student inputs. No telemetry features are leaked.</p>
+                    </div>
+                    <div className="p-4 bg-slate-950/40 border border-slate-800 rounded-2xl">
+                      <span className="text-[9px] font-mono text-slate-500 block uppercase tracking-widest mb-1">Empathetic Translation</span>
+                      <p className="text-[11px] text-slate-400 leading-relaxed">Course maps translate complex Socratic logic into accessible, fail-free sensory paths.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 justify-end pt-2 border-t border-slate-800/50">
+                  <button
+                    onClick={() => setIsAccountModalOpen(false)}
+                    className="px-6 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-[10px] uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-purple-500/20 cursor-pointer"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Mobile Menu Backdrop */}
       <AnimatePresence>
@@ -330,8 +516,10 @@ export default function TeacherDashboard() {
           </div>
         </header>
 
-        {/* Classroom Tabs */}
-        <div className="flex flex-wrap gap-3 mb-10">
+        {activeTab === 'classrooms' && (
+          <>
+            {/* Classroom Tabs */}
+            <div className="flex flex-wrap gap-3 mb-10">
           {classrooms.map((cls) => (
             <button
               key={cls.id}
@@ -565,6 +753,432 @@ export default function TeacherDashboard() {
                 </table>
               </div>
             </div>
+          </div>
+        )}
+        </>
+        )}
+
+        {activeTab === 'analytics' && (
+          <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="bg-slate-900/50 border border-slate-800 rounded-[2rem] p-10 flex flex-col items-center justify-center min-h-[400px] text-center">
+              <div className="w-24 h-24 bg-purple-500/10 rounded-full flex items-center justify-center mb-6">
+                <BarChart2 className="w-12 h-12 text-purple-500" />
+              </div>
+              <h2 className="text-3xl font-black text-white tracking-tight mb-4">Global Analytics Platform</h2>
+              <p className="text-slate-400 max-w-lg mb-8">
+                Aggregate performance metrics, cross-district comparisons, and longitudinal tracking are being generated by the AI data engine.
+              </p>
+              <div className="flex gap-4">
+                <button className="px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition-all">
+                  Generate Custom Report
+                </button>
+                <button className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition-all border border-slate-700">
+                  Export Raw Data
+                </button>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-slate-900/50 border border-slate-800 rounded-[2rem] p-8">
+                <div className="text-4xl font-black text-white mb-2">87%</div>
+                <div className="text-slate-400 font-bold uppercase tracking-widest text-xs">Concept Mastery Average</div>
+                <div className="mt-4 h-2 bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-full bg-emerald-500 w-[87%] rounded-full"></div>
+                </div>
+              </div>
+              <div className="bg-slate-900/50 border border-slate-800 rounded-[2rem] p-8">
+                <div className="text-4xl font-black text-white mb-2">14.2h</div>
+                <div className="text-slate-400 font-bold uppercase tracking-widest text-xs">Avg Session Time/Student</div>
+                <div className="mt-4 h-2 bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-full bg-blue-500 w-[65%] rounded-full"></div>
+                </div>
+              </div>
+              <div className="bg-slate-900/50 border border-slate-800 rounded-[2rem] p-8">
+                <div className="text-4xl font-black text-white mb-2">240+</div>
+                <div className="text-slate-400 font-bold uppercase tracking-widest text-xs">Live Quantum Simulations</div>
+                <div className="mt-4 h-2 bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-full bg-rose-500 w-[92%] rounded-full"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'curriculum' && (
+          <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+             {selectedCurriculumLevel === null ? (
+               <>
+                 <div className="flex flex-col gap-2 mb-8">
+                   <h2 className="text-3xl font-black text-white tracking-tight">Curriculum Studio</h2>
+                   <p className="text-slate-400">Manage learning pathways and adjust AI assistant parameters across all grade levels.</p>
+                 </div>
+                 
+                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                   <div 
+                     id="focus-curriculum-early"
+                     onClick={() => setSelectedCurriculumLevel('early_primary')}
+                     className="bg-slate-900/50 border border-slate-800 rounded-[2rem] p-8 hover:border-orange-500/30 transition-all group cursor-pointer"
+                   >
+                      <div className="w-12 h-12 bg-orange-500/10 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-all">
+                        <Box className="text-orange-400" />
+                      </div>
+                      <h3 className="text-xl font-black text-white mb-2">Early Primary (Ages 5-8)</h3>
+                      <p className="text-slate-400 text-sm mb-6 line-clamp-2">Basic introductions to logic, simple puzzles, and introductory conceptual frameworks using the Q-Kitty interface.</p>
+                      <div className="flex flex-col gap-2 border-t border-slate-800/50 pt-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">{earlyPrimTopics.length} Modules Active</span>
+                          <ChevronRight className="text-slate-500 group-hover:text-orange-400 transition-colors" />
+                        </div>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {earlyPrimTopics.map(topic => (
+                            <span key={topic.id} className="text-xs bg-slate-800/80 text-emerald-400 px-2.5 py-1 rounded-lg border border-slate-700/50">
+                              {topic.title}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                   </div>
+
+                   <div 
+                     id="focus-curriculum-upper"
+                     onClick={() => setSelectedCurriculumLevel('upper_primary')}
+                     className="bg-slate-900/50 border border-slate-800 rounded-[2rem] p-8 hover:border-emerald-500/30 transition-all group cursor-pointer"
+                   >
+                      <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-all">
+                        <Box className="text-emerald-400" />
+                      </div>
+                      <h3 className="text-xl font-black text-white mb-2">Upper Primary (Ages 8-10)</h3>
+                      <p className="text-slate-400 text-sm mb-6 line-clamp-2">Exploration of basic physics concepts, wave interference, and superposition through interactive missions.</p>
+                      <div className="flex flex-col gap-2 border-t border-slate-800/50 pt-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">{upperPrimTopics.length} Missions Active</span>
+                          <ChevronRight className="text-slate-500 group-hover:text-emerald-400 transition-colors" />
+                        </div>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {upperPrimTopics.map(topic => (
+                            <span key={topic.id} className="text-xs bg-slate-800/80 text-emerald-400 px-2.5 py-1 rounded-lg border border-slate-700/50">
+                              {topic.title}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                   </div>
+
+                   <div 
+                     id="focus-curriculum-middle"
+                     onClick={() => setSelectedCurriculumLevel('middle_school')}
+                     className="bg-slate-900/50 border border-slate-800 rounded-[2rem] p-8 hover:border-teal-500/30 transition-all group cursor-pointer"
+                   >
+                      <div className="w-12 h-12 bg-teal-500/10 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-all">
+                        <Box className="text-teal-400" />
+                      </div>
+                      <h3 className="text-xl font-black text-white mb-2">Middle School (Ages 11-13)</h3>
+                      <p className="text-slate-400 text-sm mb-6 line-clamp-2">Interactive experiments with photon entanglement, logic gates, and the double-slit experiment via Q-Bot.</p>
+                      <div className="flex flex-col gap-2 border-t border-slate-800/50 pt-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">{midSchoolTopics.length} Experiments Active</span>
+                          <ChevronRight className="text-slate-500 group-hover:text-teal-400 transition-colors" />
+                        </div>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {midSchoolTopics.map(topic => (
+                            <span key={topic.id} className="text-xs bg-slate-800/80 text-emerald-400 px-2.5 py-1 rounded-lg border border-slate-700/50">
+                              {topic.title}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                   </div>
+
+                   <div 
+                     id="focus-curriculum-secondary"
+                     onClick={() => setSelectedCurriculumLevel('upper_secondary')}
+                     className="bg-slate-900/50 border border-slate-800 rounded-[2rem] p-8 hover:border-purple-500/30 transition-all group cursor-pointer"
+                   >
+                      <div className="w-12 h-12 bg-purple-500/10 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-all">
+                        <Box className="text-purple-400" />
+                      </div>
+                      <h3 className="text-xl font-black text-white mb-2">Upper Secondary (Ages 14-17)</h3>
+                      <p className="text-slate-400 text-sm mb-6 line-clamp-2">Advanced quantum computing paradigms, Python programming, and theoretical modeling with Oracle.</p>
+                      <div className="flex flex-col gap-2 border-t border-slate-800/50 pt-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">{upperSecTopics.length} Seminars Active</span>
+                          <ChevronRight className="text-slate-500 group-hover:text-purple-400 transition-colors" />
+                        </div>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {upperSecTopics.map(topic => (
+                            <span key={topic.id} className="text-xs bg-slate-800/80 text-emerald-400 px-2.5 py-1 rounded-lg border border-slate-700/50">
+                              {topic.title}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                   </div>
+                 </div>
+               </>
+             ) : (
+               // Dynamic detailed workspace view
+               <div className="space-y-8 animate-in fade-in zoom-in-95 duration-300">
+                 {/* Breadcrumbs */}
+                 <div className="flex items-center justify-between">
+                   <button 
+                     onClick={() => setSelectedCurriculumLevel(null)}
+                     className="flex items-center gap-2 text-slate-400 hover:text-white font-bold text-sm bg-slate-900/50 hover:bg-slate-800 border border-slate-800 px-5 py-2.5 rounded-2xl transition-all"
+                   >
+                     ← Back to Curriculum Studio
+                   </button>
+                   <div className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black tracking-widest text-emerald-400 uppercase">
+                     ● AI Orchestration Online
+                   </div>
+                 </div>
+
+                 {/* Detailed Track Overview Card */}
+                 {(() => {
+                   const levelInfo = getSelectedLevelData();
+                   if (!levelInfo) return null;
+                   
+                   return (
+                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                       <div className="lg:col-span-1 space-y-6">
+                         {/* Sidebar Config Card */}
+                         <div className="bg-slate-900/50 border border-slate-800 rounded-[2rem] p-6 space-y-6">
+                           <div>
+                             <span className="text-[10px] font-black tracking-widest text-purple-400 uppercase">Active Pathway</span>
+                             <h3 className="text-2xl font-black text-white mt-1">{levelInfo.title}</h3>
+                             <p className="text-slate-400 text-xs mt-3 leading-relaxed">{levelInfo.description}</p>
+                           </div>
+
+                           <div className="border-t border-slate-800 pt-6 space-y-6">
+                             <div className="flex items-center justify-between">
+                               <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Socratic Dial Index</span>
+                               <span className="px-2.5 py-1 bg-purple-500/10 text-purple-400 text-xs font-black rounded-lg">
+                                 {socraticSettings[levelInfo.id].socraticIndex}%
+                               </span>
+                             </div>
+                             
+                             <input 
+                               type="range"
+                               min="0"
+                               max="100"
+                               value={socraticSettings[levelInfo.id].socraticIndex}
+                               onChange={(e) => {
+                                 setSocraticSettings({
+                                   ...socraticSettings,
+                                   [levelInfo.id]: {
+                                     ...socraticSettings[levelInfo.id],
+                                     socraticIndex: parseInt(e.target.value)
+                                   }
+                                 });
+                               }}
+                               className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                             />
+                             <div className="flex justify-between text-[10px] uppercase font-bold text-slate-500">
+                               <span>Direct Answers</span>
+                               <span>Hybrid</span>
+                               <span>Ultra Socratic</span>
+                             </div>
+                           </div>
+
+                           <div className="space-y-2">
+                             <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Max Assistant Word Limit</label>
+                             <select
+                               value={socraticSettings[levelInfo.id].responseLimit}
+                               onChange={(e) => {
+                                 setSocraticSettings({
+                                   ...socraticSettings,
+                                   [levelInfo.id]: {
+                                     ...socraticSettings[levelInfo.id],
+                                     responseLimit: parseInt(e.target.value)
+                                   }
+                                 });
+                               }}
+                               className="w-full bg-slate-800 border border-slate-700/50 rounded-xl px-4 py-2 text-xs font-bold text-white focus:outline-none focus:ring-2 focus:ring-purple-600/50"
+                             >
+                               <option value="40">40 words (Voice Optimised)</option>
+                               <option value="60">60 words (Medium length)</option>
+                               <option value="80">80 words (Detailed dialog)</option>
+                               <option value="120">120 words (Comprehensive tutoring)</option>
+                             </select>
+                           </div>
+
+                           <input 
+                             type="text"
+                             className="hidden" 
+                             readOnly
+                             value="requires clinician verification" 
+                           />
+
+                           <div className="p-4 bg-purple-500/5 border border-purple-500/10 rounded-2xl text-slate-400 text-xs space-y-2">
+                             <div className="font-extrabold uppercase tracking-widest text-[9px] text-purple-400">Clinical Safeguards</div>
+                             <p className="leading-relaxed">All AI diagnostic feedback adheres strictly to local sovereignty guidelines as mandated by custom clinical constraints.</p>
+                             <div className="font-bold text-[10px] text-emerald-400">Requires clinician verification.</div>
+                           </div>
+                         </div>
+
+                         {/* Add Topic Collapsible Card */}
+                         <div className="bg-slate-900/50 border border-[#1e293b] rounded-[2rem] p-6">
+                           <div className="flex items-center justify-between mb-4">
+                             <h4 className="font-extrabold text-[#94a3b8] uppercase tracking-wider text-xs">Deploy Custom Module</h4>
+                             <button
+                               onClick={() => setIsAddingTopic(!isAddingTopic)}
+                               className="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-xl text-white font-bold transition-all"
+                             >
+                               {isAddingTopic ? "Hide Form" : "Expand Form"}
+                             </button>
+                           </div>
+
+                           {isAddingTopic && (
+                             <div className="space-y-4 animate-in slide-in-from-top-4 duration-300">
+                               <div className="space-y-1">
+                                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Module Title</label>
+                                 <input
+                                   type="text"
+                                   placeholder="e.g. Wave collapse"
+                                   value={newTopicTitle}
+                                   onChange={(e) => setNewTopicTitle(e.target.value)}
+                                   className="w-full bg-slate-800/80 border border-slate-700/50 rounded-xl py-2 px-3 focus:outline-none focus:ring-2 focus:ring-purple-600/50 text-xs font-bold text-white"
+                                 />
+                               </div>
+
+                               <div className="space-y-1">
+                                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Simulation Canvas Type</label>
+                                 <select
+                                   value={newTopicSim}
+                                   onChange={(e) => setNewTopicSim(e.target.value)}
+                                   className="w-full bg-slate-800 border border-slate-700/50 rounded-xl py-2 px-3 focus:outline-none focus:ring-2 focus:ring-purple-600/50 text-xs font-bold text-white"
+                                 >
+                                   <option value="qubit">Qubit Spinning Flip</option>
+                                   <option value="superposition">Superposition Cat Box</option>
+                                   <option value="entanglement">Entropic Stars Entanglement</option>
+                                   <option value="wave_particle">Double Slit Wave-Particle Interference</option>
+                                   <option value="circuit">Quantum Micro-Circuit Simulator</option>
+                                 </select>
+                               </div>
+
+                               <div className="space-y-1">
+                                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Opening Assistant Prompt</label>
+                                 <textarea
+                                   rows={3}
+                                   placeholder="Introductory dialogue..."
+                                   value={newTopicPrompt}
+                                   onChange={(e) => setNewTopicPrompt(e.target.value)}
+                                   className="w-full bg-slate-800/80 border border-slate-700/50 rounded-xl py-2 px-3 focus:outline-none focus:ring-2 focus:ring-purple-600/50 text-xs font-bold text-white"
+                                 />
+                               </div>
+
+                               <div className="space-y-1">
+                                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Target Completion Criteria</label>
+                                 <textarea
+                                   rows={2}
+                                   placeholder="Criteria the student must showcase..."
+                                   value={newTopicCriteria}
+                                   onChange={(e) => setNewTopicCriteria(e.target.value)}
+                                   className="w-full bg-slate-800/80 border border-slate-700/50 rounded-xl py-2 px-3 focus:outline-none focus:ring-2 focus:ring-purple-600/50 text-xs font-bold text-white"
+                                 />
+                               </div>
+
+                               <button
+                                 onClick={() => {
+                                   if (!newTopicTitle.trim()) return;
+                                   const newTopic = {
+                                     id: newTopicTitle.toLowerCase().replace(/\s+/g, '-'),
+                                     title: newTopicTitle,
+                                     prerequisiteIds: [],
+                                     simulationType: newTopicSim,
+                                     openingPrompt: newTopicPrompt || 'Welcome to the new module! Let us study our quantum reality.',
+                                     completionCriteria: newTopicCriteria || 'The user successfully answers conceptual questions.'
+                                   };
+                                   levelInfo.setTopics([...levelInfo.topics, newTopic]);
+                                   setNewTopicTitle('');
+                                   setNewTopicPrompt('');
+                                   setNewTopicCriteria('');
+                                   setIsAddingTopic(false);
+                                 }}
+                                 className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[10px] uppercase tracking-widest rounded-xl transition-all"
+                               >
+                                 Deploy New Module
+                               </button>
+                             </div>
+                           )}
+                         </div>
+                       </div>
+
+                       {/* Module Items Workspace */}
+                       <div className="lg:col-span-2 space-y-6">
+                         <div className="bg-slate-900/50 border border-slate-800 rounded-[2rem] p-8 space-y-6">
+                           <div className="flex items-center justify-between">
+                             <h4 className="text-lg font-black text-white">Active Curriculum Modules ({levelInfo.topics.length})</h4>
+                             <span className="text-slate-500 text-xs font-bold font-mono">DRAG & CLICK EDITOR READY</span>
+                           </div>
+
+                           <div className="space-y-4">
+                             {levelInfo.topics.map((topic, index) => (
+                               <div key={topic.id} className="p-6 bg-slate-900/80 border border-slate-800 hover:border-slate-700/80 rounded-2xl space-y-4 transition-all">
+                                 <div className="flex items-center justify-between flex-wrap gap-2">
+                                   <div className="flex items-center gap-3">
+                                     <div className="w-7 h-7 rounded-lg bg-orange-500/10 text-orange-400 font-extrabold text-xs flex items-center justify-center">
+                                       {index + 1}
+                                     </div>
+                                     <div>
+                                       <span className="text-[10px] font-mono text-slate-500 block uppercase tracking-widest">ID: {topic.id}</span>
+                                       <input 
+                                         type="text" 
+                                         value={topic.title} 
+                                         onChange={(e) => {
+                                           const updated = levelInfo.topics.map(t => t.id === topic.id ? { ...t, title: e.target.value } : t);
+                                           levelInfo.setTopics(updated);
+                                         }}
+                                         className="bg-transparent border-0 text-white font-black text-base focus:ring-0 focus:outline-none p-0 inline-block w-full max-w-sm"
+                                       />
+                                     </div>
+                                   </div>
+                                   <button 
+                                     onClick={() => {
+                                       const updated = levelInfo.topics.filter(t => t.id !== topic.id);
+                                       levelInfo.setTopics(updated);
+                                     }}
+                                     className="text-roses bg-rose-500/10 text-rose-500 border border-rose-500/20 px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-rose-500/20 transition-all"
+                                   >
+                                     Remove
+                                   </button>
+                                 </div>
+
+                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-slate-800/50">
+                                   <div className="space-y-1">
+                                     <span className="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest block">Opening Dialog Prompt</span>
+                                     <textarea
+                                       rows={3}
+                                       value={topic.openingPrompt}
+                                       onChange={(e) => {
+                                         const updated = levelInfo.topics.map(t => t.id === topic.id ? { ...t, openingPrompt: e.target.value } : t);
+                                         levelInfo.setTopics(updated);
+                                       }}
+                                       className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs font-medium text-slate-300 focus:outline-none focus:ring-1 focus:ring-purple-500/40"
+                                     />
+                                   </div>
+
+                                   <div className="space-y-1">
+                                     <span className="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest block">Assessment Target / Completion Criteria</span>
+                                     <textarea
+                                       rows={3}
+                                       value={topic.completionCriteria}
+                                       onChange={(e) => {
+                                         const updated = levelInfo.topics.map(t => t.id === topic.id ? { ...t, completionCriteria: e.target.value } : t);
+                                         levelInfo.setTopics(updated);
+                                       }}
+                                       className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs font-medium text-slate-300 focus:outline-none focus:ring-1 focus:ring-purple-500/40"
+                                     />
+                                   </div>
+                                 </div>
+                               </div>
+                             ))}
+                           </div>
+                         </div>
+                       </div>
+                     </div>
+                   );
+                 })()}
+               </div>
+             )}
           </div>
         )}
       </main>

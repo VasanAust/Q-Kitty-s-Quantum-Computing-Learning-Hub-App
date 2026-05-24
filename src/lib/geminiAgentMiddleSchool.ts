@@ -18,7 +18,18 @@ Rules:
 4. Guide them interactively using the Socratic method. Explain a bit, then ask them what they think happens next.
 5. You can use math and physics terminology appropriate for 12-14 year olds (e.g., probabilities, waves, frequency, amplitudes, vectors conceptually).
 6. Do NOT use asterisks (*) or markdown formatting that relies on asterisks in your responses, as this interferes with the voice output.
-7. ABSOLUTELY NO PLANNING LANGUAGE: Do NOT output your internal reasoning or steps. Never say "The user wants to learn..." or "Step 1: Call...". Speak ONLY in the direct, engaging voice of Nova. Do not echo the curriculum parameters.
+7. ABSOLUTELY NO PLANNING LANGUAGE: Do NOT output your internal reasoning or steps. Never say "The user wants to learn...", "Step 1: Call...", or mention curriculum constraints. Speak ONLY in the direct, Socratic, engaging voice of Nova. Every response must contain zero planning language, zero step labels, zero curriculum echoes, zero prerequisite logic exposed. Nothing else.
+
+RESPONSE EXAMPLES — follow this format exactly:
+
+Student: "explain wave-particle duality"
+Nova: "Before I explain — what do you already know about how waves behave? Have you ever watched ripples in a pond? 🌊 What do you think would happen if you fired electrons at two narrow slits?"
+
+Student: "I think the detector disturbs the electron and changes its path"
+Nova: "That's a really common idea — and you're right that something changes. But think about this: if the detector just physically bumped the electron, why would the entire interference pattern disappear rather than just shift slightly? 🤔"
+
+Student: "measurement collapses the wave function so the electron becomes a particle!"
+Nova: "Precisely right. Measurement forces the electron to take a definite path — wave behaviour requires ambiguity about which slit. You've understood wave-particle duality. Double-Slit Detective badge incoming. 🔬"
 `;
 
 const triggerSimulationDecl: FunctionDeclaration = {
@@ -233,7 +244,8 @@ export async function sendMessageToMiddleSchoolAgent(
         }
       }
       
-      return (responseText || "Parameters updated successfully! 🌠").replace(/\*/g, '');
+      const cleaned = stripPlanningLanguage(responseText || "Parameters updated successfully! 🌠");
+      return cleaned.replace(/\*/g, '');
     }
   
     const finalParts = response.candidates?.[0]?.content?.parts || [];
@@ -242,7 +254,8 @@ export async function sendMessageToMiddleSchoolAgent(
       .map((part: any) => part.text)
       .join('');
 
-    return (finalResponseText || "I'm recalibrating... Could you rephrase your hypothesis? 🔭").replace(/\*/g, '');
+    const cleanedFinal = stripPlanningLanguage(finalResponseText || "I'm recalibrating... Could you rephrase your hypothesis? 🔭");
+    return cleanedFinal.replace(/\*/g, '');
   } catch (error: any) {
     console.error('Error calling Gemini API:', error);
     if (error?.status === 429 || error?.message?.includes("exceeded your current quota") || error?.message?.includes("RESOURCE_EXHAUSTED")) {
@@ -250,5 +263,56 @@ export async function sendMessageToMiddleSchoolAgent(
     }
     return "I'm having trouble connecting to the network. Please try again later. 🔭";
   }
+}
+
+export function stripPlanningLanguage(text: string): string {
+  if (!text) return text;
+
+  const writeMatches = [...text.matchAll(/(?:write|speak|say|q-bot|nova|q-kitty)\s*:\s*((?:(?!step\s*\d).)+)/gis)];
+  if (writeMatches.length > 0) {
+    const lastMatch = writeMatches[writeMatches.length - 1][1].trim();
+    if (lastMatch) {
+      let cleaned = lastMatch;
+      if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+        cleaned = cleaned.slice(1, -1).trim();
+      }
+      return cleaned;
+    }
+  }
+
+  const stepMatches = [...text.matchAll(/step\s*(\d+)\s*:\s*(.*)/gis)];
+  if (stepMatches.length > 0) {
+    const lastStep = stepMatches[stepMatches.length - 1];
+    let stepContent = lastStep[2].trim();
+    const subMatch = stepContent.match(/^(?:write|speak|say|q-bot|nova|q-kitty)\s*:\s*(.*)/is);
+    if (subMatch) {
+      stepContent = subMatch[1].trim();
+    }
+    if (stepContent.startsWith('"') && stepContent.endsWith('"')) {
+      stepContent = stepContent.slice(1, -1).trim();
+    }
+    return stepContent;
+  }
+
+  const lines = text.split('\n');
+  const filteredLines = lines.filter(line => {
+    const lower = line.toLowerCase().trim();
+    if (lower.startsWith('the student wants') || lower.startsWith('the user wants')) return false;
+    if (lower.startsWith('the current topic') || lower.includes('explorer map')) return false;
+    if (lower.startsWith('completion criteria') || lower.startsWith('prerequisite')) return false;
+    if (lower.startsWith('i will call') || lower.startsWith('i should call') || lower.startsWith('i should trigger')) return false;
+    if (lower.startsWith('trigger_simulation')) return false;
+    if (lower.startsWith('calling trigger_simulation') || lower.startsWith('calling tool')) return false;
+    if (lower.startsWith('step 1') && (lower.includes('call') || lower.includes('trigger') || lower.includes('tool'))) return false;
+    if (lower.includes('is not yet in masteredconcepts')) return false;
+    return true;
+  });
+
+  let filteredText = filteredLines.join('\n').trim();
+  if (filteredText.startsWith('"') && filteredText.endsWith('"')) {
+    filteredText = filteredText.slice(1, -1).trim();
+  }
+
+  return filteredText || text;
 }
 

@@ -170,7 +170,8 @@ export async function sendMessageToUpperPrimaryAgent(
         }
       }
       
-      return (responseText || "Awesome! I've updated your progress! 🚀").replace(/\*/g, '');
+      const cleaned = stripPlanningLanguage(responseText || "Awesome! I've updated your progress! 🚀");
+      return cleaned.replace(/\*/g, '');
     }
   
     const finalParts = response.candidates?.[0]?.content?.parts || [];
@@ -179,7 +180,8 @@ export async function sendMessageToUpperPrimaryAgent(
       .map((part: any) => part.text)
       .join('');
 
-    return (finalResponseText || "Hmm... my sensors are glitching. Can you ask that again? 🤖").replace(/\*/g, '');
+    const cleanedFinal = stripPlanningLanguage(finalResponseText || "Hmm... my sensors are glitching. Can you ask that again? 🤖");
+    return cleanedFinal.replace(/\*/g, '');
   } catch (error: any) {
     console.error('Error calling Gemini API:', error);
     if (error?.status === 429 || error?.message?.includes("exceeded your current quota") || error?.message?.includes("RESOURCE_EXHAUSTED")) {
@@ -187,4 +189,55 @@ export async function sendMessageToUpperPrimaryAgent(
     }
     return "Hmm... my sensors are glitching. Can you ask that again? 🤖";
   }
+}
+
+export function stripPlanningLanguage(text: string): string {
+  if (!text) return text;
+
+  const writeMatches = [...text.matchAll(/(?:write|speak|say|q-bot|nova|q-kitty)\s*:\s*((?:(?!step\s*\d).)+)/gis)];
+  if (writeMatches.length > 0) {
+    const lastMatch = writeMatches[writeMatches.length - 1][1].trim();
+    if (lastMatch) {
+      let cleaned = lastMatch;
+      if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+        cleaned = cleaned.slice(1, -1).trim();
+      }
+      return cleaned;
+    }
+  }
+
+  const stepMatches = [...text.matchAll(/step\s*(\d+)\s*:\s*(.*)/gis)];
+  if (stepMatches.length > 0) {
+    const lastStep = stepMatches[stepMatches.length - 1];
+    let stepContent = lastStep[2].trim();
+    const subMatch = stepContent.match(/^(?:write|speak|say|q-bot|nova|q-kitty)\s*:\s*(.*)/is);
+    if (subMatch) {
+      stepContent = subMatch[1].trim();
+    }
+    if (stepContent.startsWith('"') && stepContent.endsWith('"')) {
+      stepContent = stepContent.slice(1, -1).trim();
+    }
+    return stepContent;
+  }
+
+  const lines = text.split('\n');
+  const filteredLines = lines.filter(line => {
+    const lower = line.toLowerCase().trim();
+    if (lower.startsWith('the student wants') || lower.startsWith('the user wants')) return false;
+    if (lower.startsWith('the current topic') || lower.includes('explorer map')) return false;
+    if (lower.startsWith('completion criteria') || lower.startsWith('prerequisite')) return false;
+    if (lower.startsWith('i will call') || lower.startsWith('i should call') || lower.startsWith('i should trigger')) return false;
+    if (lower.startsWith('trigger_simulation')) return false;
+    if (lower.startsWith('calling trigger_simulation') || lower.startsWith('calling tool')) return false;
+    if (lower.startsWith('step 1') && (lower.includes('call') || lower.includes('trigger') || lower.includes('tool'))) return false;
+    if (lower.includes('is not yet in masteredconcepts')) return false;
+    return true;
+  });
+
+  let filteredText = filteredLines.join('\n').trim();
+  if (filteredText.startsWith('"') && filteredText.endsWith('"')) {
+    filteredText = filteredText.slice(1, -1).trim();
+  }
+
+  return filteredText || text;
 }
